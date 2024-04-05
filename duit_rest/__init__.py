@@ -1,0 +1,1 @@
+REST_ROUTE_ANNOTATION_ATTRIBUTE_NAME = "__duit_rest_route_annotation"
