@@ -1,6 +1,7 @@
 import json
 import threading
 from functools import partial
+from json import JSONDecodeError
 from typing import Generic, TypeVar, Optional, Any
 
 import uvicorn
@@ -48,9 +49,8 @@ class RESTService(Generic[T]):
         def _handle_get(m: T):
             return self.settings_handler.serialize(m)
 
-        def _handle_post(m: T, data: str):
-            unpacked_data = json.loads(data)
-            self.settings_handler.deserialize(unpacked_data, m)
+        def _handle_post(m: T, data: dict):
+            self.settings_handler.deserialize(data, m)
             return self.settings_handler.serialize(m)
 
         router.add_api_route(endpoint_path, endpoint=partial(_handle_get, model), methods=["GET"])
@@ -69,17 +69,22 @@ class RESTService(Generic[T]):
             success, data = serializer.serialize(f.value)
             return data
 
-        def _handle_get(f: DataField) -> Any:
-            return _serialize_data(f)
+        def _handle_get(f: DataField, value: Optional[str] = None) -> Any:
+            if value is not None:
+                unpacked_value = self._try_unpack(value)
+                success, data = serializer.deserialize(field_type, unpacked_value)
+                f.value = data
 
-        def _handle_post(f: DataField, value: str) -> Any:
-            unpacked_value = json.loads(value)
-            success, data = serializer.deserialize(field_type, unpacked_value)
-            f.value = data
             return _serialize_data(f)
 
         router.add_api_route(endpoint_path, endpoint=partial(_handle_get, field), methods=["GET"])
-        router.add_api_route(endpoint_path, endpoint=partial(_handle_post, field), methods=["POST"])
+
+    @staticmethod
+    def _try_unpack(value: str) -> Any:
+        try:
+            return json.loads(value)
+        except JSONDecodeError as ex:
+            return value
 
     def run(self, blocking: bool = True) -> Optional[threading.Thread]:
         if blocking:
