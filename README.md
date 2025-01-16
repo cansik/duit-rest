@@ -122,6 +122,13 @@ shutdown:
 rest_service.run()
 ```
 
+To start the service in its own thread, set the `blocking` argument to `False:
+
+```python
+# run non-blocking
+thread = rest_service.run(blocking=False)
+```
+
 ## About
 
 Copyright (c) 2025 Florian Bruggisser
